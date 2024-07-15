@@ -2,18 +2,24 @@
   "name": "point_portal",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon api.js"
+    "start": "nodemon app.js",
+    "build:css": "tailwindcss build public/styles.css -o public/tailwind.css"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.614.0",
+    "@aws-sdk/lib-storage": "^3.614.0",
     "@novastar/screen": "^2.0.0-alpha.10",
+    "autoprefixer": "^10.4.19",
     "axios": "^1.1.2",
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
     "dgram": "^1.0.1",
-    "express": "^4.18.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "formidable": "^3.5.1",
     "fs": "^0.0.1-security",
     "http": "^0.0.1-security",
     "mongodb": "^5.5.0",
@@ -25,6 +31,7 @@
     "node-cron": "^3.0.3",
     "node-datetime": "^2.1.2",
     "path": "^0.12.7",
+    "postcss": "^8.4.39",
     "soap": "^0.45.0",
     "socket.io": "^4.7.5",
     "swagger-ui-express": "^4.5.0",
@@ -34,6 +41,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^2.0.18"
+    "nodemon": "^2.0.18",
+    "tailwindcss": "^3.4.4"
   }
 }
