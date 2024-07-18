@@ -3,7 +3,9 @@ const cors = require('cors');
 const express = require('express');
 const http = require('http');
 const app = express();
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env.local' });
 
 // Middleware setup
 app.use(express.json());
@@ -12,6 +14,10 @@ app.use(body_parser.json());
 app.use(cors());
 const server = http.createServer(app);
 //routes
+// Set EJS as the view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views')); // Specify the directory for views
+
 const appRouter = require('./router');
 app.set('json spaces', 5); // to pretify json response
 

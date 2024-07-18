@@ -1,6 +1,7 @@
 const { Upload } = require("@aws-sdk/lib-storage");
 const { S3Client } = require("@aws-sdk/client-s3");
-const Transform = require('stream').Transform;
+const formidable = require('formidable');
+const fs = require('fs');
 
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
@@ -9,78 +10,75 @@ const Bucket = process.env.S3_BUCKET;
 
 const parsefile = async (req) => {
     return new Promise((resolve, reject) => {
-        let options = {
-            maxFileSize: 100 * 1024 * 1024, //100 MBs converted to bytes,
-            allowEmptyFiles: false
-        }
+        const form = new formidable.IncomingForm({
+            maxFileSize: 100 * 1024 * 1024, // 100 MBs
+            allowEmptyFiles: true
+        });
 
-        const form = formidable(options);
-        
-        form.parse(req, (err, fields, files) => {});
-
-        form.on('error', error => {
-            reject(error.message)
-        })
-        
-        form.on('data', data => {
-            if (data.name === "successUpload") {
-                resolve(data.value);
+        form.parse(req, (err, fields, files) => {
+            if (err) {
+                console.error('Error parsing form:', err);
+                return reject(err);
             }
-        })
-        
-        form.on('fileBegin', (formName, file) => {
 
-            file.open = async function () {
-                this._writeStream = new Transform({
-                    transform(chunk, encoding, callback) {
-                        callback(null, chunk)
-                    }
+            // Debugging: Log the files object to see its structure
+            // console.log('Files object:', files);
+
+            const file = files.file[0]; // Access the first file in the array
+
+            if (!file || !file.filepath) {
+                const error = new Error('File path is undefined');
+                console.error(error);
+                return reject(error);
+            }
+
+            if (!file || file.size === 0) {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Error: No file uploaded or file size is zero.');
+                return;
+            }
+
+
+            const fileStream = fs.createReadStream(file.filepath);
+
+            const uploadParams = {
+                ACL: 'public-read',
+                Bucket,
+                Key: `${Date.now().toString()}-${file.originalFilename}`,
+                Body: fileStream
+            };
+
+            const s3Client = new S3Client({
+                region,
+                credentials: {
+                    accessKeyId,
+                    secretAccessKey
+                }
+            });
+
+            const upload = new Upload({
+                client: s3Client,
+                params: uploadParams,
+                tags: [], // optional tags
+                queueSize: 4, // optional concurrency configuration
+                partSize: 1024 * 1024 * 5, // optional size of each part, in bytes, at least 5MB
+                leavePartsOnError: false // optional manually handle dropped parts
+            });
+
+            upload.done()
+                .then(data => {
+                    resolve(data);
                 })
-
-                this._writeStream.on('error', e => {
-                    form.emit('error', e)
+                .catch(err => {
+                    reject(err);
                 });
-                
-                // upload to S3
-                new Upload({
-                    client: new S3Client({
-                        credentials: {
-                            accessKeyId,
-                            secretAccessKey
-                        },
-                        region
-                    }),
-                    params: {
-                        ACL: 'public-read',
-                        Bucket,
-                        Key: `${Date.now().toString()}-${this.originalFilename}`,
-                        Body: this._writeStream
-                    },
-                    tags: [], // optional tags
-                    queueSize: 4, // optional concurrency configuration
-                    partSize: 1024 * 1024 * 5, // optional size of each part, in bytes, at least 5MB
-                    leavePartsOnError: false, // optional manually handle dropped parts
-                })
-                    .done()
-                    .then(data => {
-                        form.emit('data', { name: "complete", value: data });
-                    }).catch((err) => {
-                        form.emit('error', err);
-                    })
-            }
-            
-            file.end = function (cb) {
-                this._writeStream.on('finish', () => {
-                    this.emit('end');
-                    cb()
-                })
-                this._writeStream.end()
-            }
-
-        })
-
-        
-    })
-}
+        });
+    });
+};
 
 module.exports = parsefile;
+
+
+
+
+
